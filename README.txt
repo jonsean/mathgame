@@ -9,3 +9,7 @@ At this point it's just a few python classes, some images, and sounds. Pygame is
 An addition problem is displayed. Polygons move down from the top of the screen with number labels on them. 
 If a polygon is clicked, the corresponding number is checked to see if it is a correct answer to the addition problem. 
 A score label is updated + or - 1. Up or down arrows adjust the volume. S mutes the app. 
+
+Use mathgame.py to run the app in a python 3.13 environment with pygame installed. 
+
+mathgame.zip contains a pyinstaller created .exe stand alone with the required png's and mp3's to run. 
