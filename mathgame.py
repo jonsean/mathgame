@@ -26,8 +26,8 @@ class App:
         self.AstroidSpawn_Event = pygame.USEREVENT + 1
         pygame.time.set_timer(self.AstroidSpawn_Event, 250)
         
-        self.IncorrectTimeout_Event = pygame.USEREVENT + 2
-        pygame.time.set_timer(self.IncorrectTimeout_Event, 2000)
+        self.IncorrectTimeout_Event = pygame.USEREVENT + 2 # only start timer when incorrect answere is called 
+        
         
         # init screen
         self.mainScreen = pygame.display.set_mode(self.size, pygame.RESIZABLE)
@@ -63,6 +63,8 @@ class App:
         
         self._running = True
         
+        self.paused = False
+        
     def correctAnswer(self):
         self.score += 1
         self.scoreboard.setScore(self.score)
@@ -76,6 +78,7 @@ class App:
         self.answersOut = 0
     
     def incorrectAnswer(self):
+        pygame.time.set_timer(self.IncorrectTimeout_Event, 2000, 1)
         self.cursor.set_alt_path()
         self.canClick = False 
         self.score -= 1
@@ -128,14 +131,23 @@ class App:
                 i.set_volume(i.get_volume() + delta)
             finally:
                 print("volume:" + str(i.get_volume()))
-    
+                
+    def on_pause(self):
+        self.paused = True
+        self.canClick = False
+        print("paused = " + str(self.paused))
+    def on_unpause(self):
+        self.paused = False
+        self.canClick = True 
+        print("paused = " + str(self.paused))
+        
     def on_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and self.canClick:
             #check if astroid is clicked
             for i in self.astroidList:
                 if i.containts(event.pos):
                     self.astroidClicked(i)
-        if event.type == self.AstroidSpawn_Event:
+        if event.type == self.AstroidSpawn_Event and not self.paused:
             self.add_astroid()
         if event.type == pygame.KEYDOWN:
             nlist = self.charlist + event.unicode
@@ -153,7 +165,10 @@ class App:
                     pygame.mixer.unpause()
                     self.play_audio = True
             if event.unicode == "\x1b":
-                self._running = False
+                if self.paused:
+                    self.on_unpause()
+                else:
+                    self.on_pause()
         if event.type == self.IncorrectTimeout_Event:
             self.canClick = True
             self.cursor.set_cursor_path()
@@ -164,8 +179,9 @@ class App:
     
     def on_loop(self):
         self.dt = self.clock.tick(60)
-        self.move_astroids()
-        self.mathLabel.animate()
+        if not self.paused: 
+            self.move_astroids()
+            self.mathLabel.animate()
     def on_render(self):
         self.mainScreen.fill((0,0,200))
         #self.mainScreen.blit(self.img,(0,0))
