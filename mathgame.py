@@ -1,11 +1,17 @@
+# version 0.2 rewrite of sonnet 4 
+
 import pygame
 from pygame.locals import *
+import numpy as np
+import random
+
 from astroid import Astroid
 from mathProblem import MathProblem
 from retical import Retical
 from scoreboard import ScoreBoard
-import numpy as np
-import random
+from clock import Clock
+from escMenu import EscMenu
+
 pygame.init()
 class App:
     charlist = ""
@@ -47,6 +53,12 @@ class App:
         self.astroidList = []
         
         self.score = 0
+
+         # Add clock
+        self.game_clock = Clock(position=(self.width - 100, 10))
+        
+        # Add escape menu
+        self.esc_menu = EscMenu(self.width, self.height)
         
         # audio
         self.play_audio = True
@@ -123,7 +135,10 @@ class App:
                 self.remove_astroid(i)
     
     def set_screen_size(self):
+        # Reset width and height variables based on the current screen size for all other components
         self.size = self.width, self.height = self.mainScreen.get_size()
+        # Update clock position
+        self.game_clock.position = (self.width - 100, 10)
        
     def change_volume(self, delta=.1):
         for i in self.sound_array:
@@ -131,22 +146,63 @@ class App:
                 i.set_volume(i.get_volume() + delta)
             finally:
                 print("volume:" + str(i.get_volume()))
-                
+
+
+    def reset_game(self):
+        """Reset the entire game state"""
+        self.score = 0
+        self.scoreboard.setScore(self.score)
+        self.astroidList.clear()
+        self.game_clock.reset()
+        self.mathLabel.setProblem(end_pos=(self.width/2 - self.p_size, self.height - self.p_size), 
+                                 start_pos=(self.width/2 - self.p_size, 0), font_size=self.p_size)
+        self.answersOut = 0
+    
     def on_pause(self):
         self.paused = True
         self.canClick = False
+        self.game_clock.pause()
+        self.esc_menu.show()
         print("paused = " + str(self.paused))
+    
     def on_unpause(self):
         self.paused = False
         self.canClick = True 
+        self.game_clock.unpause()
+        self.esc_menu.hide()
         print("paused = " + str(self.paused))
-        
+    
+
     def on_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and self.canClick:
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.esc_menu.visible:
+                action = self.esc_menu.handle_click(event.pos)
+                if action == 'volume_up':
+                    self.change_volume(.1)
+                elif action == 'volume_down':
+                    self.change_volume(-.1)
+                elif action == 'toggle_mute':
+                    if self.play_audio:
+                        pygame.mixer.pause()
+                        self.play_audio = False
+                    else: 
+                        pygame.mixer.unpause()
+                        self.play_audio = True
+                elif action == 'reset_game':
+                    self.reset_game()
+                elif action == 'resume':
+                    self.on_unpause()
+            elif self.canClick:
             #check if astroid is clicked
-            for i in self.astroidList:
-                if i.containts(event.pos):
-                    self.astroidClicked(i)
+                for i in self.astroidList:
+                    if i.containts(event.pos):
+                        self.astroidClicked(i)
+
+        
+        if event.type == pygame.MOUSEMOTION:
+            self.esc_menu.handle_mouse_motion(event.pos)
+        
+        
         if event.type == self.AstroidSpawn_Event and not self.paused:
             self.add_astroid()
         if event.type == pygame.KEYDOWN:
@@ -172,8 +228,16 @@ class App:
         if event.type == self.IncorrectTimeout_Event:
             self.canClick = True
             self.cursor.set_cursor_path()
+
+
+        
+
         if event.type == pygame.WINDOWSIZECHANGED:
             self.set_screen_size()
+            self.esc_menu.update_screen_size(self.width, self.height)
+
+
+        
         if event.type == pygame.QUIT:
             self._running = False
     
@@ -182,19 +246,23 @@ class App:
         if not self.paused: 
             self.move_astroids()
             self.mathLabel.animate()
+
+
     def on_render(self):
         self.mainScreen.fill((0,0,200))
-        #self.mainScreen.blit(self.img,(0,0))
         self.mathLabel.draw(self.mainScreen)
         self.scoreboard.draw(self.mainScreen)
+        self.game_clock.draw(self.mainScreen)
         
         for i in self.astroidList:
             i.draw(self.mainScreen)
             
+        self.esc_menu.draw(self.mainScreen)
+
         self.cursor.draw(self.mainScreen)
-        
-        
+
         pygame.display.flip()
+        
     def on_cleanup(self):
         pygame.quit()
  
